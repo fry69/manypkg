@@ -1,0 +1,13 @@
+{
+  "name": "deno-project",
+  "version": "1.0.0",
+  "workspace": [
+    "packages/*"
+  ],
+  "imports": {
+    "@std/fmt": "jsr:@std/fmt@0.221.0"
+  },
+  "tasks": {
+    "hello": "echo 'Hello, World!'"
+  }
+}

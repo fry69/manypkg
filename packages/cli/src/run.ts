@@ -2,16 +2,32 @@ import { getPackages } from "@manypkg/get-packages";
 import { exec } from "tinyexec";
 import * as logger from "./logger.ts";
 import { ExitError } from "./errors.ts";
+import { type ToolType } from "@manypkg/tools";
+
+function getRunCmd(tool: ToolType) {
+  switch (tool) {
+    case "deno":
+      return ["deno", "task"];
+    case "pnpm":
+    case "npm":
+      return [tool, "run"];
+    case "bun":
+    case "lerna":
+    case "rush":
+    case "yarn":
+      return [tool];
+  }
+}
 
 export async function runCmd(args: string[], cwd: string) {
-  let { packages } = await getPackages(cwd);
+  let { packages, tool } = await getPackages(cwd);
 
   const exactMatchingPackage = packages.find((pkg) => {
     return pkg.packageJson.name === args[0] || pkg.relativeDir === args[0];
   });
 
   if (exactMatchingPackage) {
-    const { exitCode } = await exec("yarn", args.slice(1), {
+    const { exitCode } = await exec(...getRunCmd(tool.type), ...args.slice(1), {
       nodeOptions: {
         cwd: exactMatchingPackage.dir,
         stdio: "inherit",
@@ -40,7 +56,7 @@ export async function runCmd(args: string[], cwd: string) {
     logger.error("No matching packages found");
     throw new ExitError(1);
   } else {
-    const { exitCode } = await exec("yarn", args.slice(1), {
+    const { exitCode } = await exec(...getRunCmd(tool.type), ...args.slice(1), {
       nodeOptions: {
         cwd: matchingPackages[0].dir,
         stdio: "inherit",

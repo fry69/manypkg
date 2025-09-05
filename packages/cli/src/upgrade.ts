@@ -2,14 +2,33 @@ import { getPackages } from "@manypkg/get-packages";
 import semver from "semver";
 import { DEPENDENCY_TYPES, versionRangeToRangeType } from "./checks/utils.ts";
 import pLimit from "p-limit";
+import { exec } from "tinyexec";
 
 import { writePackage, install } from "./utils.ts";
 
-export async function upgradeDependency([name, tag = "latest"]: string[]) {
+export async function upgradeDependency([name, tag]: string[]) {
   // handle no name is missing
   let { packages, tool, rootPackage, rootDir } = await getPackages(
     process.cwd()
   );
+
+  if (tool.type === "deno") {
+    let args = ["update"];
+    if (name) {
+      args.push(name);
+    }
+    if (tag) {
+      args.push(tag);
+    }
+    await exec("deno", args, {
+      nodeOptions: {
+        cwd: rootDir,
+        stdio: "inherit",
+      },
+    });
+    return;
+  }
+
   let isScope = name.startsWith("@") && !name.includes("/");
   let newVersion = semver.validRange(tag) ? tag : null;
 
@@ -60,7 +79,7 @@ export async function upgradeDependency([name, tag = "latest"]: string[]) {
         let info = await getPackageInfo(pkgName);
 
         let distTags = info["dist-tags"];
-        let version = distTags[tag];
+        let version = distTags[tag || "latest"];
 
         return { pkgName, version };
       } else {

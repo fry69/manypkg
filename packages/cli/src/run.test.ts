@@ -5,7 +5,10 @@ import { exec } from "tinyexec";
 import fs from "node:fs";
 import path from "node:path";
 
-const f = fixturez(__dirname);
+const f = fixturez(__dirname, {
+  __fixtures__: path.join(__dirname, "..", "..", "__fixtures__"),
+});
+
 
 function stripNodeWarnings(str: string) {
   return str
@@ -31,8 +34,32 @@ describe("Run command", () => {
     'should execute "%s %s" and exit with %i',
     async (arg0, arg1, expectedExitCode) => {
       const { exitCode, stdout, stderr } = await executeBin(
-        f.find("basic-with-scripts"),
+        f.find("__fixtures__/basic-with-scripts"),
         "run",
+        arg0,
+        arg1
+      );
+      expect(exitCode).toBe(expectedExitCode);
+      expect(stripAnsi(stdout.toString())).toMatchSnapshot("stdout");
+      expect(stripAnsi(stripNodeWarnings(stderr.toString()))).toMatchSnapshot(
+        "stderr"
+      );
+    }
+  );
+});
+
+describe("Deno Run command", () => {
+  it.each([
+    ["run", "@scope/package-one", "test", 0],
+    ["run", "package-one", "test", 0],
+    ["run", "deno-project", "hello", 0],
+    ["upgrade", "@std/fmt", "0.222.0", 0],
+  ])(
+    'should execute "%s %s" and exit with %i',
+    async (command, arg0, arg1, expectedExitCode) => {
+      const { exitCode, stdout, stderr } = await executeBin(
+        f.find("__fixtures__/deno-project"),
+        command,
         arg0,
         arg1
       );

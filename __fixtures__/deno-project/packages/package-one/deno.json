@@ -1,0 +1,10 @@
+{
+  "name": "@scope/package-one",
+  "version": "1.0.0",
+  "imports": {
+    "@std/path": "jsr:@std/path@0.221.0"
+  },
+  "tasks": {
+    "test": "echo 'Running tests...'"
+  }
+}

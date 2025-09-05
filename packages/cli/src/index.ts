@@ -7,6 +7,7 @@ import {
 } from "@manypkg/get-packages";
 import type { Options } from "./checks/utils.ts";
 import { checks } from "./checks/index.ts";
+import { checks as denoChecks } from "./checks-deno/index.ts";
 import { ExitError } from "./errors.ts";
 import { writePackage, install } from "./utils.ts";
 import { runCmd } from "./run.ts";
@@ -38,6 +39,67 @@ let runChecks = (
   let requiresInstall = false;
   let ignoredRules = new Set(options.ignoredRules || []);
   for (let [ruleName, check] of Object.entries(checks)) {
+    if (ignoredRules.has(ruleName)) {
+      continue;
+    }
+
+    if (check.type === "all") {
+      for (let [, workspace] of allWorkspaces) {
+        let errors = check.validate(
+          workspace,
+          allWorkspaces,
+          rootWorkspace,
+          options
+        );
+        if (shouldFix && check.fix !== undefined) {
+          for (let error of errors) {
+            let output = check.fix(error as any, options) || {
+              requiresInstall: false,
+            };
+            if (output.requiresInstall) {
+              requiresInstall = true;
+            }
+          }
+        } else {
+          for (let error of errors) {
+            hasErrored = true;
+            logger.error(check.print(error as any, options));
+          }
+        }
+      }
+    }
+    if (check.type === "root" && rootWorkspace) {
+      let errors = check.validate(rootWorkspace, allWorkspaces, options);
+      if (shouldFix && check.fix !== undefined) {
+        for (let error of errors) {
+          let output = check.fix(error as any, options) || {
+            requiresInstall: false,
+          };
+          if (output.requiresInstall) {
+            requiresInstall = true;
+          }
+        }
+      } else {
+        for (let error of errors) {
+          hasErrored = true;
+          logger.error(check.print(error as any, options));
+        }
+      }
+    }
+  }
+  return { requiresInstall, hasErrored };
+};
+
+let runDenoChecks = (
+  allWorkspaces: Map<string, Package>,
+  rootWorkspace: RootPackage | undefined,
+  shouldFix: boolean,
+  options: Options
+) => {
+  let hasErrored = false;
+  let requiresInstall = false;
+  let ignoredRules = new Set(options.ignoredRules || []);
+  for (let [ruleName, check] of Object.entries(denoChecks)) {
     if (ignoredRules.has(ruleName)) {
       continue;
     }
@@ -146,19 +208,32 @@ async function execCmd(args: string[]) {
   if (rootPackage) {
     packagesByName.set(rootPackage.packageJson.name, rootPackage);
   }
-  let { hasErrored, requiresInstall } = runChecks(
-    packagesByName,
-    rootPackage,
-    shouldFix,
-    options
-  );
+
+  let hasErrored, requiresInstall;
+
+  if (tool.type === "deno") {
+    ({ hasErrored, requiresInstall } = runDenoChecks(
+      packagesByName,
+      rootPackage,
+      shouldFix,
+      options
+    ));
+  } else {
+    ({ hasErrored, requiresInstall } = runChecks(
+      packagesByName,
+      rootPackage,
+      shouldFix,
+      options
+    ));
+  }
+
   if (shouldFix) {
     await Promise.all(
       [...packagesByName].map(async ([pkgName, workspace]) => {
         writePackage(workspace);
       })
     );
-    if (requiresInstall) {
+    if (requiresInstall && tool.type !== "deno") {
       await install(tool.type, rootDir);
     }
 
