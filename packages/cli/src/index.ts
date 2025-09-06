@@ -11,6 +11,7 @@ import { ExitError } from "./errors.ts";
 import { writePackage, install } from "./utils.ts";
 import { runCmd } from "./run.ts";
 import { upgradeDependency } from "./upgrade.ts";
+import { outdated } from "./outdated.ts";
 import { npmTagAll } from "./npm-tag.ts";
 import { exec } from "tinyexec";
 import pLimit from "p-limit";
@@ -121,12 +122,15 @@ async function execCmd(args: string[]) {
   if (things[0] === "upgrade") {
     return upgradeDependency(things.slice(1));
   }
+  if (things[0] === "outdated") {
+    return outdated(process.cwd());
+  }
   if (things[0] === "npm-tag") {
     return npmTagAll(things.slice(1));
   }
   if (things[0] !== "check" && things[0] !== "fix") {
     logger.error(
-      `command ${things[0]} not found, only check, exec, run, upgrade, npm-tag and fix exist`
+      `command ${things[0]} not found, only check, exec, run, upgrade, npm-tag, outdated and fix exist`
     );
     throw new ExitError(1);
   }
