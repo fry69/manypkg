@@ -1,6 +1,7 @@
 import parseGithubUrl from "parse-github-url";
 import normalizePath from "normalize-path";
 import type { Package } from "@manypkg/get-packages";
+import { isNodePackage } from "@manypkg/tools";
 
 import { makeCheck } from "./utils.ts";
 
@@ -14,11 +15,13 @@ type ErrorType = {
 export default makeCheck<ErrorType>({
   type: "all",
   validate: (workspace, allWorkspaces, rootWorkspace, options) => {
-    let rootRepositoryField: unknown = (rootWorkspace?.packageJson as any)
-      ?.repository;
+    if (!isNodePackage(workspace)) return [];
+    if (rootWorkspace && !isNodePackage(rootWorkspace)) return [];
+
+    const rootRepositoryField = rootWorkspace?.packageJson.repository;
 
     if (typeof rootRepositoryField === "string") {
-      let result = parseGithubUrl(rootRepositoryField);
+      const result = parseGithubUrl(rootRepositoryField);
       if (
         result !== null &&
         (result.host === "github.com" || result.host === "dev.azure.com")
@@ -55,8 +58,7 @@ export default makeCheck<ErrorType>({
             )}&version=GB${options.defaultBranch}&_a=contents`;
           }
 
-          let currentRepositoryField = (workspace.packageJson as any)
-            .repository;
+          const currentRepositoryField = workspace.packageJson.repository;
           if (correctRepositoryField !== currentRepositoryField) {
             return [
               {
@@ -73,8 +75,9 @@ export default makeCheck<ErrorType>({
     return [];
   },
   fix: (error: ErrorType) => {
-    (error.workspace.packageJson as any).repository =
-      error.correctRepositoryField;
+    if (isNodePackage(error.workspace)) {
+      error.workspace.packageJson.repository = error.correctRepositoryField;
+    }
   },
   print: (error) => {
     if (error.currentRepositoryField === undefined) {
