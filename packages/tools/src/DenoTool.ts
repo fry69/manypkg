@@ -1,9 +1,10 @@
 import path from "node:path";
+import type { PackageConfig } from "./PackageConfig.ts";
 
 /**
  * An in-memory representation of a deno.json[c] file.
  */
-export interface DenoJSON {
+export interface DenoJSON extends PackageConfig {
   compilerOptions?: Record<string, unknown>;
   lint?: {
     include?: string[];
@@ -35,8 +36,6 @@ export interface DenoJSON {
   imports?: Record<string, string>;
   exclude?: string[];
   workspace?: string[];
-  name: string;
-  version: string;
 }
 
 import {

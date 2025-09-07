@@ -1,3 +1,5 @@
+import type { PackageConfig } from "./PackageConfig.ts";
+
 /**
  * An in-memory representation of a package.json file.
  */
@@ -13,10 +15,7 @@ type PublishConfig = {
   registry?: string;
 };
 
-export type PackageJSON = {
-  name: string;
-  version: string;
-
+export type PackageJSON = PackageConfig & {
   // dependency maps (optional)
   dependencies?: DependencyMap;
   peerDependencies?: DependencyMap;
@@ -40,7 +39,7 @@ export interface Package {
   /**
    * The pre-loaded package json structure.
    */
-  packageJson: PackageJSON | DenoJSON;
+  packageJson: PackageConfig;
   dependencies?: Record<
     string,
     {
